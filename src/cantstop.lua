@@ -25,7 +25,7 @@ function Stage:init() end
 function Stage:update(dt) end
 function Stage:quit() end
 
---[[ IntroStage ]]--
+--[[ Intro Stage ]]--
 Intro = Stage:new{
   text_visible = false,
   text_flash = false,
@@ -115,7 +115,7 @@ function Intro:check_display_glitch()
     and self.glitch_direction > 0 and self.glitch_direction < 3
 end
 
---[[ MenuStage ]]--
+--[[ Game Stage ]]--
 Game = Stage:new {
   active_player = 1,
   status = 1, -- Rolling dices
@@ -134,67 +134,90 @@ Game = Stage:new {
   sin_count = 0,
   players = { -- type: 0 human, 1 computer
     {name = "Player 1", points = 0, type = 0},
-    {name = "Player 2", points = 1, type = 1},
-    {name = "Player 3", points = 2, type = 1},
-    {name = "Player 4", points = 3, type = 1}
+    {name = "Player 2", points = 0, type = 1},
+    {name = "Player 3", points = 0, type = 1},
+    {name = "Player 4", points = 0, type = 1}
   },
-  draw_function = nil
+  update_function = nil,
+  draw_function = nil,
+  cursor = {
+    x = 0,
+    y = 0,
+    frame = 0
+  }
 }
 
 function Game:init()
+  self.update_function = self.update_rolling_dices
   self.draw_function = self.draw_info_box
 end
 
-function Game:update(dt)
-  if self.status == 1 then -- Rolling dices message
-    self.dices[1] = math.random(6)
-    self.dices[2] = math.random(6)
-    if self.players[self.active_player].type == 0 then
-      if btnp(5, 120, 0) then
-        self.status = 2
-        self.draw_function = self.draw_dices_throw
+
+function Game:update_rolling_dices(dt)
+  self.dices[1] = math.random(6)
+  self.dices[2] = math.random(6)
+  if self.players[self.active_player].type == 0 then
+    if btnp(5, 120, 0) then
+      self.status = 2
+      self.update_function = self.update_hand_shaking
+      self.draw_function = self.draw_dices_throw
+    end
+  else
+    -- TODO: Add the AI for computer players
+  end
+end
+
+function Game:update_hand_shaking(dt)
+  self.dices_stopped = false
+  self.shake_counter = self.shake_counter + 1
+  if self.shake_counter % 5 == 0 then
+    self.shake_direction = .5
+    if self.shake_counter % 10 == 0 then
+      self.shake_direction = -.5
+    end
+    if self.shake_counter % 50 == 0 then
+      self.status = 3
+      self.update_function = self.update_dices_over_table
+    end
+  end
+  self.shake_y = self.shake_y + self.shake_direction
+end
+
+function Game:update_dices_over_table(dt)
+  for dice=1, 2 do
+    local sin = math.sin(self.dice_x[dice])
+    if self.sin_count < 34 then
+      self.dice_x[dice] = self.dice_x[dice] + .6
+      self.dice_y[dice] = 72 + sin
+      if sin < 0.1 then
+        self.sin_count = self.sin_count + 1
       end
     else
-      -- TODO: Add the AI for computer players
-    end
-  elseif self.status == 2 then -- Hand shaking
-    self.dices_stopped = false
-    self.shake_counter = self.shake_counter + 1
-    if self.shake_counter % 5 == 0 then
-      self.shake_direction = .5
-      if self.shake_counter % 10 == 0 then
-        self.shake_direction = -.5
-      end
-      if self.shake_counter % 50 == 0 then
-        self.status = 3
-      end
-    end
-    self.shake_y = self.shake_y + self.shake_direction
-  elseif self.status == 3 then -- Dices moving over the table
-    for dice=1, 2 do
-      local sin = math.sin(self.dice_x[dice])
-      if self.sin_count < 34 then
-        self.dice_x[dice] = self.dice_x[dice] + .6
-        self.dice_y[dice] = 72 + sin
-        if sin < 0.1 then
-          self.sin_count = self.sin_count + 1
-        end
-      else
-        for dice=1, 2 do
-          self.dice_y[dice] = 72
-          self.dices_stopped = true
-          if self.sin_count == 34 then
-            self.dices_stopped_time = time()
-            self.sin_count = 35
-          end      
-          if self.dices_stopped_time + 1500 < time() then
-            self.status = 4
-            self.draw_function = nil
-          end
+      for dice=1, 2 do
+        self.dice_y[dice] = 72
+        self.dices_stopped = true
+        if self.sin_count == 34 then
+          self.dices_stopped_time = time()
+          self.sin_count = 35
+        end      
+        if self.dices_stopped_time + 1500 < time() then
+          self.status = 4
+          self.update_function = nil
+          self.draw_function = nil
         end
       end
     end
-  elseif self.status == 4 then -- Move --
+  end
+end
+
+function Game:update_cursor(dt)
+  local x_position = self.dices[1] + self.dices[2]
+
+end
+
+function Game:update(dt)
+  if self.update_function then
+    self:update_function(dt)
   end
   self:draw()
 end
@@ -257,7 +280,7 @@ function Game:draw_player_scores()
   end
 end
 
---[[ StageManager ]]--
+--[[ Stage Manager ]]--
 function StageManager()
   local stages = {}
   local actual_stage = {
@@ -315,7 +338,7 @@ function Entity:update() end
 sm = StageManager()
 sm.add("intro", Intro)
 sm.add("game", Game)
-sm.switch("intro")
+sm.switch("game")
 last_time = time()
 
 --[[ TIC ]]--
