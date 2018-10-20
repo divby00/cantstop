@@ -144,6 +144,21 @@ Game = Stage:new {
     x = 0,
     y = 0,
     frame = 0
+  },
+  board = {
+    cells = {
+      {0, 0}, 
+      {0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0, 0, 0}, 
+      {0, 0, 0, 0}, 
+      {0, 0} 
+    }
   }
 }
 
@@ -202,8 +217,8 @@ function Game:update_dices_over_table(dt)
         end      
         if self.dices_stopped_time + 1500 < time() then
           self.status = 4
-          self.update_function = nil
-          self.draw_function = nil
+          self.update_function = self.update_cursor
+          self.draw_function = self.draw_cursor
         end
       end
     end
@@ -212,7 +227,12 @@ end
 
 function Game:update_cursor(dt)
   local x_position = self.dices[1] + self.dices[2]
+  self.cursor.frame = self.cursor.frame + (.01 * dt)
+  if self.cursor.frame >=4 then self.cursor.frame = 0 end
+end
 
+function Game:draw_cursor()
+  spr(96 + math.floor(self.cursor.frame), 20, 100, 0);
 end
 
 function Game:update(dt)
