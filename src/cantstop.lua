@@ -133,31 +133,42 @@ Game = Stage:new {
   dices_stopped_time = 0,
   sin_count = 0,
   players = { -- type: 0 human, 1 computer
-    {name = "Player 1", points = 0, type = 0},
-    {name = "Player 2", points = 0, type = 1},
-    {name = "Player 3", points = 0, type = 1},
-    {name = "Player 4", points = 0, type = 1}
+    {
+      name = "Player 1", points = 0, type = 0, id = 1, 
+      tokens = {{0, 0}, {0, 0}, {0, 0}},
+      active_token = 1
+    },
+    {
+      name = "Player 2", points = 0, type = 1, id = 2, 
+      tokens = {{0, 0}, {0, 0}, {0, 0}},
+      active_token = 1
+    },
+    {
+      name = "Player 3", points = 0, type = 1, id = 4, 
+      tokens = {{0, 0}, {0, 0}, {0, 0}},
+      active_token = 1
+    },
+    {
+      name = "Player 4", points = 0, type = 1, id = 8, 
+      tokens = {{0, 0}, {0, 0}, {0, 0}},
+      active_token = 1
+    }
   },
   update_function = nil,
   draw_function = nil,
   cursor = {
     x = 0,
     y = 0,
-    frame = 0
+    frame = 0,
+    column = 0,
+    row = 0
   },
   board = {
-    cells = {
-      {0, 0}, 
-      {0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0, 0, 0}, 
-      {0, 0, 0, 0}, 
-      {0, 0} 
+    cols = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    col_max_size = {2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2},
+    col_coordinates = {
+      {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100}, {116, 108}, 
+      {124, 100}, {132, 92}, {140, 84}, {148, 76}, {156, 68}
     }
   }
 }
@@ -219,6 +230,17 @@ function Game:update_dices_over_table(dt)
           self.status = 4
           self.update_function = self.update_cursor
           self.draw_function = self.draw_cursor
+          self.cursor.column = self.dices[1] + self.dices[2]
+          self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
+
+          -- Find the next empty space for the selected column to get the cursor y coordinate
+          local empty_position = 0
+          while self.board.cols[self.cursor.column - 1] & self.players[self.active_player].id ~= 0
+          do
+            empty_position = empty_position + 1
+          end
+          self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
+          self.cursor.row = empty_position + 1
         end
       end
     end
@@ -226,13 +248,26 @@ function Game:update_dices_over_table(dt)
 end
 
 function Game:update_cursor(dt)
-  local x_position = self.dices[1] + self.dices[2]
   self.cursor.frame = self.cursor.frame + (.01 * dt)
   if self.cursor.frame >=4 then self.cursor.frame = 0 end
+  if btn(5) then
+    self.players[self.active_player].tokens[1] = { self.cursor.x, self.cursor.y }
+  end
 end
 
 function Game:draw_cursor()
-  spr(96 + math.floor(self.cursor.frame), 20, 100, 0);
+  -- print(self.cursor.x.." "..self.cursor.y.." "..self.cursor.column.." "..self.cursor.row, 60, 0)
+  spr(96 + math.floor(self.cursor.frame), self.cursor.x, self.cursor.y, 0);
+end
+
+function Game:draw_tokens()
+  for player=1, 4 do
+    for token=1, 3 do
+      if self.players[player].tokens[token][1] ~= 0 then
+        spr(26 + self.active_player, self.players[player].tokens[token][1], self.players[player].tokens[token][2], 0)
+      end
+    end
+  end
 end
 
 function Game:update(dt)
@@ -245,6 +280,7 @@ end
 function Game:draw()
   cls(1)
   map(0, 0, 15, 16, self.board_x, self.board_y, 0)
+  self:draw_tokens()
   if self.draw_function then 
     self:draw_function() 
   end
