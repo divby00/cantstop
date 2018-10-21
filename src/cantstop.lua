@@ -112,7 +112,7 @@ end
 --------------------------------- Game Stage ---------------------------------
 Game = Stage:new {
   status = 1, -- Rolling dices
-  dices = { x = {0, 1}, y = {1, 0}, init_x = {99, 96}, stopped = false, stopped_time = 0, sin_count = 0 },
+  dices = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 95, 102, 105}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
   shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
     active_player = 1,
@@ -121,8 +121,6 @@ Game = Stage:new {
     { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
     { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 }
   },
-  update_function = nil,
-  draw_function = nil,
   cursor = { x = 0, y = 0, frame = 0, column = 0, row = 0 },
   board = { x = 60, y = 4,
     cols = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -131,7 +129,8 @@ Game = Stage:new {
       {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100}, {116, 108}, 
       {124, 100}, {132, 92}, {140, 84}, {148, 76}, {156, 68}
     }
-  }
+  },
+  update_function = nil, draw_function = nil
 }
 
 function Game:init()
@@ -140,8 +139,9 @@ function Game:init()
 end
 
 function Game:update_rolling_dices(dt)
-  self.dices[1] = math.random(6)
-  self.dices[2] = math.random(6)
+  for i=1, 4 do
+    self.dices.result[i] = math.random(6)
+  end
   if self.players[self.players.active_player].type == 0 then
     if btnp(5, 120, 0) then
       self.status = 2
@@ -170,27 +170,28 @@ function Game:update_hand_shaking(dt)
 end
 
 function Game:update_dices_over_table(dt)
-  for dice=1, 2 do
+  for dice=1, 4 do
     local sin = math.sin(self.dices.x[dice])
-    if self.dices.sin_count < 34 then
+    if self.dices.sin_count < 72 then
       self.dices.x[dice] = self.dices.x[dice] + .6
       self.dices.y[dice] = 72 + sin
       if sin < 0.1 then
         self.dices.sin_count = self.dices.sin_count + 1
       end
     else
-      for dice=1, 2 do
+      for dice=1, 4 do
         self.dices.y[dice] = 72
         self.dices.stopped = true
-        if self.dices.sin_count == 34 then
+        if self.dices.sin_count == 72 then
           self.dices.stopped_time = time()
-          self.dices.sin_count = 35
+          self.dices.sin_count = 73
         end      
         if self.dices.stopped_time + 1500 < time() then
           self.status = 4
           self.update_function = self.update_cursor
           self.draw_function = self.draw_cursor
-          self.cursor.column = self.dices[1] + self.dices[2]
+          self.cursor.column = self.dices.result[1] + self.dices.result[2]
+          self.cursor.column = self.dices.result[1] + self.dices.result[2]
           self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
 
           -- Find the next empty space for the selected column to get the cursor y coordinate
@@ -269,12 +270,13 @@ function Game:draw_dices_throw()
       spr(78, 96 + self.shake.x, 64 + self.shake.y)
       spr(79, 104 + self.shake.x, 64 + self.shake.y)
       spr(93, 96 + self.shake.x, 56 + self.shake.y)
-      for dice=1, 2 do
+      for dice=1, 4 do
         pix(self.dices.x[dice] + self.dices.init_x[dice], self.dices.y[dice], 7)
       end
     else -- Draw dices (removing hand)
-      spr(self.dices[1], 108, 64)
-      spr(self.dices[2], 125, 64)
+      for i=1, 4 do
+        spr(self.dices.result[i], 76 + (16 * i), 64)
+      end
     end
   end
 end
