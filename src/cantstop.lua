@@ -5,7 +5,6 @@
 -- input: gamepad
 -- saveid: cantstop
 
---[[ Stage ]]--
 settings = {
   music = false,
   sfx = false,
@@ -13,6 +12,7 @@ settings = {
   player_colors = { 8, 12, 11, 10}
 }
 
+--------------------------------- Stage ---------------------------------
 Stage = {}
 
 function Stage:new(o)
@@ -25,80 +25,74 @@ function Stage:init() end
 function Stage:update(dt) end
 function Stage:quit() end
 
---[[ Intro Stage ]]--
+---------------------------------- Intro Stage ---------------------------------
 Intro = Stage:new{
-  text_visible = false,
-  text_flash = false,
-  text_counter = 0,
-  glitch_counter = 0,
-  glitch_direction = 0,
-  glitch_x = 0,
-  glitch_y = 0,
-  initial_time = 0
+  text = {visible = false, flash = false, counter = 0, initial_time = 0},
+  glitch = { x = 0, y = 0, counter = 0, direction = 0}
 }
 
 function Intro:init()
-  self.initial_time = time()
+  self.text.initial_time = time()
 end
 
 function Intro:update(dt)
-  if self.text_flash then
-    self.text_counter = self.text_counter + 1
+  if self.text.flash then
+    self.text.counter = self.text.counter + 1
     if btn(5) then
       sm.switch("game", Game)
     end
   end
-  self.glitch_counter = self.glitch_counter + 1
+  self.glitch.counter = self.glitch.counter + 1
 
-  if self.glitch_counter == 40 then
-    self.glitch_direction = math.random(4)
-    if self.glitch_direction == 1 then
-      self.glitch_x = 1
-      self.glitch_y = 0
-    elseif self.glitch_direction == 2 then
-      self.glitch_x = 0
-      self.glitch_y = 1
+  if self.glitch.counter == 40 then
+    self.glitch.direction = math.random(4)
+    if self.glitch.direction == 1 then
+      self.glitch.x = 1
+      self.glitch.y = 0
+    elseif self.glitch.direction == 2 then
+      self.glitch.x = 0
+      self.glitch.y = 1
     end
   end
 
-  if self.glitch_counter == 55 then
-    self.glitch_counter = 0
-    self.glitch_x = 0
-    self.glitch_y = 0
+  if self.glitch.counter == 55 then
+    self.glitch.counter = 0
+    self.glitch.x = 0
+    self.glitch.y = 0
   end
 
-  if not self.text_flash and time() > self.initial_time + 1500 then
-    self.text_flash = true
+  if not self.text.flash and time() > self.text.initial_time + 1500 then
+    self.text.flash = true
   end
-  if self.text_counter == 25 and self.text_flash then
-    self.text_visible = not self.text_visible
-    self.text_counter = 0
+  if self.text.counter == 25 and self.text.flash then
+    self.text.visible = not self.text.visible
+    self.text.counter = 0
   end
   self:draw()
 end
 
 function Intro:draw()
   cls(0)
-  if self.text_visible then
+  if self.text.visible then
     print("Press x to continue", 68, 80, 6)
   end
-  self:draw_logo()
-  self:draw_pixel_band()
+  self:_draw_logo()
+  self:_draw_pixel_band()
 end
 
-function Intro:draw_logo()
+function Intro:_draw_logo()
   for i=0,12 do
     spr(64 + i, 68 + (8 * i), 40)
     spr((64 + 16) + i, 68 + (8 * i), 48)
-    if self:check_display_glitch() then
-      spr(64 + i, 68 + (8 * i) + self.glitch_x, 40 + self.glitch_y, 0)
-      spr((64 + 16) + i, (68 + (8 * i)) + self.glitch_x, 48 + self.glitch_y, 0)
+    if self:_check_display_glitch() then
+      spr(64 + i, 68 + (8 * i) + self.glitch.x, 40 + self.glitch.y, 0)
+      spr((64 + 16) + i, (68 + (8 * i)) + self.glitch.x, 48 + self.glitch.y, 0)
      end
   end
 end
 
-function Intro:draw_pixel_band()
-  if self:check_display_glitch() then
+function Intro:_draw_pixel_band()
+  if self:_check_display_glitch() then
     for band=0, math.random(5) do
       local y = math.random(136)
       for x=0, 240 do
@@ -110,60 +104,27 @@ function Intro:draw_pixel_band()
   end
 end
 
-function Intro:check_display_glitch()
-  return self.glitch_counter >= 50 and self.glitch_counter <= 65 
-    and self.glitch_direction > 0 and self.glitch_direction < 3
+function Intro:_check_display_glitch()
+  return self.glitch.counter >= 50 and self.glitch.counter <= 65 
+    and self.glitch.direction > 0 and self.glitch.direction < 3
 end
 
---[[ Game Stage ]]--
+--------------------------------- Game Stage ---------------------------------
 Game = Stage:new {
-  active_player = 1,
   status = 1, -- Rolling dices
-  board_x = 60,
-  board_y = 4,
-  dices = {},
-  shake_x = 0, 
-  shake_y = 0,
-  shake_counter = 0,
-  shake_direction = 0,
-  dice_x = {0, 1},
-  dice_y = {1, 0},
-  dice_init_x = {99, 96},
-  dices_stopped = false,
-  dices_stopped_time = 0,
-  sin_count = 0,
+  dices = { x = {0, 1}, y = {1, 0}, init_x = {99, 96}, stopped = false, stopped_time = 0, sin_count = 0 },
+  shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
-    {
-      name = "Player 1", points = 0, type = 0, id = 1, 
-      tokens = {{0, 0}, {0, 0}, {0, 0}},
-      active_token = 1
-    },
-    {
-      name = "Player 2", points = 0, type = 1, id = 2, 
-      tokens = {{0, 0}, {0, 0}, {0, 0}},
-      active_token = 1
-    },
-    {
-      name = "Player 3", points = 0, type = 1, id = 4, 
-      tokens = {{0, 0}, {0, 0}, {0, 0}},
-      active_token = 1
-    },
-    {
-      name = "Player 4", points = 0, type = 1, id = 8, 
-      tokens = {{0, 0}, {0, 0}, {0, 0}},
-      active_token = 1
-    }
+    active_player = 1,
+    { name = "Player 1", points = 0, type = 0, id = 1, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
+    { name = "Player 2", points = 0, type = 1, id = 2, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
+    { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
+    { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 }
   },
   update_function = nil,
   draw_function = nil,
-  cursor = {
-    x = 0,
-    y = 0,
-    frame = 0,
-    column = 0,
-    row = 0
-  },
-  board = {
+  cursor = { x = 0, y = 0, frame = 0, column = 0, row = 0 },
+  board = { x = 60, y = 4,
     cols = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     col_max_size = {2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2},
     col_coordinates = {
@@ -178,11 +139,10 @@ function Game:init()
   self.draw_function = self.draw_info_box
 end
 
-
 function Game:update_rolling_dices(dt)
   self.dices[1] = math.random(6)
   self.dices[2] = math.random(6)
-  if self.players[self.active_player].type == 0 then
+  if self.players[self.players.active_player].type == 0 then
     if btnp(5, 120, 0) then
       self.status = 2
       self.update_function = self.update_hand_shaking
@@ -194,39 +154,39 @@ function Game:update_rolling_dices(dt)
 end
 
 function Game:update_hand_shaking(dt)
-  self.dices_stopped = false
-  self.shake_counter = self.shake_counter + 1
-  if self.shake_counter % 5 == 0 then
-    self.shake_direction = .5
-    if self.shake_counter % 10 == 0 then
-      self.shake_direction = -.5
+  self.dices.stopped = false
+  self.shake.counter = self.shake.counter + 1
+  if self.shake.counter % 5 == 0 then
+    self.shake.direction = .5
+    if self.shake.counter % 10 == 0 then
+      self.shake.direction = -.5
     end
-    if self.shake_counter % 50 == 0 then
+    if self.shake.counter % 50 == 0 then
       self.status = 3
       self.update_function = self.update_dices_over_table
     end
   end
-  self.shake_y = self.shake_y + self.shake_direction
+  self.shake.y = self.shake.y + self.shake.direction
 end
 
 function Game:update_dices_over_table(dt)
   for dice=1, 2 do
-    local sin = math.sin(self.dice_x[dice])
-    if self.sin_count < 34 then
-      self.dice_x[dice] = self.dice_x[dice] + .6
-      self.dice_y[dice] = 72 + sin
+    local sin = math.sin(self.dices.x[dice])
+    if self.dices.sin_count < 34 then
+      self.dices.x[dice] = self.dices.x[dice] + .6
+      self.dices.y[dice] = 72 + sin
       if sin < 0.1 then
-        self.sin_count = self.sin_count + 1
+        self.dices.sin_count = self.dices.sin_count + 1
       end
     else
       for dice=1, 2 do
-        self.dice_y[dice] = 72
-        self.dices_stopped = true
-        if self.sin_count == 34 then
-          self.dices_stopped_time = time()
-          self.sin_count = 35
+        self.dices.y[dice] = 72
+        self.dices.stopped = true
+        if self.dices.sin_count == 34 then
+          self.dices.stopped_time = time()
+          self.dices.sin_count = 35
         end      
-        if self.dices_stopped_time + 1500 < time() then
+        if self.dices.stopped_time + 1500 < time() then
           self.status = 4
           self.update_function = self.update_cursor
           self.draw_function = self.draw_cursor
@@ -235,8 +195,7 @@ function Game:update_dices_over_table(dt)
 
           -- Find the next empty space for the selected column to get the cursor y coordinate
           local empty_position = 0
-          while self.board.cols[self.cursor.column - 1] & self.players[self.active_player].id ~= 0
-          do
+          while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
             empty_position = empty_position + 1
           end
           self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
@@ -251,7 +210,7 @@ function Game:update_cursor(dt)
   self.cursor.frame = self.cursor.frame + (.01 * dt)
   if self.cursor.frame >=4 then self.cursor.frame = 0 end
   if btn(5) then
-    self.players[self.active_player].tokens[1] = { self.cursor.x, self.cursor.y }
+    self.players[self.players.active_player].runners[1] = { self.cursor.x, self.cursor.y }
   end
 end
 
@@ -262,9 +221,9 @@ end
 
 function Game:draw_tokens()
   for player=1, 4 do
-    for token=1, 3 do
-      if self.players[player].tokens[token][1] ~= 0 then
-        spr(26 + self.active_player, self.players[player].tokens[token][1], self.players[player].tokens[token][2], 0)
+    for runner=1, 3 do
+      if self.players[player].runners[runner][1] ~= 0 then
+        spr(26 + self.players.active_player, self.players[player].runners[runner][1], self.players[player].runners[runner][2], 0)
       end
     end
   end
@@ -279,7 +238,7 @@ end
 
 function Game:draw()
   cls(1)
-  map(0, 0, 15, 16, self.board_x, self.board_y, 0)
+  map(0, 0, 15, 16, self.board.x, self.board.y, 0)
   self:draw_tokens()
   if self.draw_function then 
     self:draw_function() 
@@ -290,9 +249,9 @@ end
 function Game:draw_info_box()
   rect(48, 48, 144, 40, 0)
   rectb(48, 48, 144, 40, 7)
-  print(self.players[self.active_player].name, 96, 56, settings.player_colors[self.active_player])
+  print(self.players[self.players.active_player].name, 96, 56, settings.player_colors[self.players.active_player])
   local message = "Rolling dices..."
-  if self.players[self.active_player].type == 0 then 
+  if self.players[self.players.active_player].type == 0 then 
     message = "Press x to roll dices"
   end
   print(message, 64, 72, 7)
@@ -302,16 +261,16 @@ function Game:draw_dices_throw()
   rect(80, 48, 80, 40, 0)
   rectb(80, 48, 80, 40, 7)
   if self.status == 2 then -- Draw closed hand
-    spr(63, 88 + self.shake_x, 64 + self.shake_y )
-    spr(77, 96 + self.shake_x, 64 + self.shake_y)
+    spr(63, 88 + self.shake.x, 64 + self.shake.y )
+    spr(77, 96 + self.shake.x, 64 + self.shake.y)
   elseif self.status == 3 then
-    if not self.dices_stopped then -- Draw opened hand
-      spr(63, 88 + self.shake_x, 64 + self.shake_y )
-      spr(78, 96 + self.shake_x, 64 + self.shake_y)
-      spr(79, 104 + self.shake_x, 64 + self.shake_y)
-      spr(93, 96 + self.shake_x, 56 + self.shake_y)
+    if not self.dices.stopped then -- Draw opened hand
+      spr(63, 88 + self.shake.x, 64 + self.shake.y )
+      spr(78, 96 + self.shake.x, 64 + self.shake.y)
+      spr(79, 104 + self.shake.x, 64 + self.shake.y)
+      spr(93, 96 + self.shake.x, 56 + self.shake.y)
       for dice=1, 2 do
-        pix(self.dice_x[dice] + self.dice_init_x[dice], self.dice_y[dice], 7)
+        pix(self.dices.x[dice] + self.dices.init_x[dice], self.dices.y[dice], 7)
       end
     else -- Draw dices (removing hand)
       spr(self.dices[1], 108, 64)
@@ -336,7 +295,7 @@ function Game:draw_player_scores()
   end
 end
 
---[[ Stage Manager ]]--
+--------------------------------- Stage manager ---------------------------------
 function StageManager()
   local stages = {}
   local actual_stage = {
@@ -375,35 +334,19 @@ function StageManager()
   }
 end
 
---[[ Entity ]]--
-Entity = {
-  x=0, y=0,
-  active=true,
-  stage=nil
-}
-
-function Entity:new(o)
-  o = o or {}
-  return setmetatable(o, {__index=self})
-end
-
-function Entity:draw() end
-
-function Entity:update() end
-
-sm = StageManager()
-sm.add("intro", Intro)
-sm.add("game", Game)
-sm.switch("game")
-last_time = time()
-
---[[ TIC ]]--
+--------------------------------- TIC ---------------------------------
 function TIC()
   local actual_time = time()
   local dt = actual_time - last_time
-
   if dt < 500 then
     sm.update(dt)
   end
   last_time = actual_time
 end
+
+--------------------------------- Start --------------------------------- 
+sm = StageManager()
+sm.add("intro", Intro)
+sm.add("game", Game)
+sm.switch("game")
+last_time = time()
