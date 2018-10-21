@@ -111,8 +111,8 @@ end
 
 --------------------------------- Game Stage ---------------------------------
 Game = Stage:new {
-  status = 1, -- Rolling dices
-  dices = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 95, 102, 105}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
+  status = 1, -- Rolling dice
+  dice = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 95, 102, 105}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
   shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
     active_player = 1,
@@ -134,19 +134,19 @@ Game = Stage:new {
 }
 
 function Game:init()
-  self.update_function = self.update_rolling_dices
+  self.update_function = self.update_rolling_dice
   self.draw_function = self.draw_info_box
 end
 
-function Game:update_rolling_dices(dt)
+function Game:update_rolling_dice(dt)
   for i=1, 4 do
-    self.dices.result[i] = math.random(6)
+    self.dice.result[i] = math.random(6)
   end
   if self.players[self.players.active_player].type == 0 then
     if btnp(5, 120, 0) then
       self.status = 2
       self.update_function = self.update_hand_shaking
-      self.draw_function = self.draw_dices_throw
+      self.draw_function = self.draw_dice_throw
     end
   else
     -- TODO: Add the AI for computer players
@@ -154,7 +154,7 @@ function Game:update_rolling_dices(dt)
 end
 
 function Game:update_hand_shaking(dt)
-  self.dices.stopped = false
+  self.dice.stopped = false
   self.shake.counter = self.shake.counter + 1
   if self.shake.counter % 5 == 0 then
     self.shake.direction = .5
@@ -163,35 +163,35 @@ function Game:update_hand_shaking(dt)
     end
     if self.shake.counter % 50 == 0 then
       self.status = 3
-      self.update_function = self.update_dices_over_table
+      self.update_function = self.update_dice_over_table
     end
   end
   self.shake.y = self.shake.y + self.shake.direction
 end
 
-function Game:update_dices_over_table(dt)
-  for dice=1, 4 do
-    local sin = math.sin(self.dices.x[dice])
-    if self.dices.sin_count < 72 then
-      self.dices.x[dice] = self.dices.x[dice] + .6
-      self.dices.y[dice] = 72 + sin
+function Game:update_dice_over_table(dt)
+  for die=1, 4 do
+    local sin = math.sin(self.dice.x[die])
+    if self.dice.sin_count < 72 then
+      self.dice.x[die] = self.dice.x[die] + .6
+      self.dice.y[die] = 72 + sin
       if sin < 0.1 then
-        self.dices.sin_count = self.dices.sin_count + 1
+        self.dice.sin_count = self.dice.sin_count + 1
       end
     else
       for dice=1, 4 do
-        self.dices.y[dice] = 72
-        self.dices.stopped = true
-        if self.dices.sin_count == 72 then
-          self.dices.stopped_time = time()
-          self.dices.sin_count = 73
+        self.dice.y[die] = 72
+        self.dice.stopped = true
+        if self.dice.sin_count == 72 then
+          self.dice.stopped_time = time()
+          self.dice.sin_count = 73
         end      
-        if self.dices.stopped_time + 1500 < time() then
+        if self.dice.stopped_time + 1500 < time() then
           self.status = 4
           self.update_function = self.update_cursor
           self.draw_function = self.draw_cursor
-          self.cursor.column = self.dices.result[1] + self.dices.result[2]
-          self.cursor.column = self.dices.result[1] + self.dices.result[2]
+          self.cursor.column = self.dice.result[1] + self.dice.result[2]
+          self.cursor.column = self.dice.result[1] + self.dice.result[2]
           self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
 
           -- Find the next empty space for the selected column to get the cursor y coordinate
@@ -251,31 +251,31 @@ function Game:draw_info_box()
   rect(48, 48, 144, 40, 0)
   rectb(48, 48, 144, 40, 7)
   print(self.players[self.players.active_player].name, 96, 56, settings.player_colors[self.players.active_player])
-  local message = "Rolling dices..."
+  local message = "Rolling dice..."
   if self.players[self.players.active_player].type == 0 then 
-    message = "Press x to roll dices"
+    message = "Press x to roll dice"
   end
   print(message, 64, 72, 7)
 end
 
-function Game:draw_dices_throw()
+function Game:draw_dice_throw()
   rect(80, 48, 80, 40, 0)
   rectb(80, 48, 80, 40, 7)
   if self.status == 2 then -- Draw closed hand
     spr(63, 88 + self.shake.x, 64 + self.shake.y )
     spr(77, 96 + self.shake.x, 64 + self.shake.y)
   elseif self.status == 3 then
-    if not self.dices.stopped then -- Draw opened hand
+    if not self.dice.stopped then -- Draw opened hand
       spr(63, 88 + self.shake.x, 64 + self.shake.y )
       spr(78, 96 + self.shake.x, 64 + self.shake.y)
       spr(79, 104 + self.shake.x, 64 + self.shake.y)
       spr(93, 96 + self.shake.x, 56 + self.shake.y)
-      for dice=1, 4 do
-        pix(self.dices.x[dice] + self.dices.init_x[dice], self.dices.y[dice], 7)
+      for die=1, 4 do
+        pix(self.dice.x[die] + self.dice.init_x[die], self.dice.y[die], 7)
       end
-    else -- Draw dices (removing hand)
+    else -- Draw dice (removing hand)
       for i=1, 4 do
-        spr(self.dices.result[i], 76 + (16 * i), 64)
+        spr(self.dice.result[i], 76 + (16 * i), 64)
       end
     end
   end
