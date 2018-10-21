@@ -112,7 +112,7 @@ end
 --------------------------------- Game Stage ---------------------------------
 Game = Stage:new {
   status = 1, -- Rolling dice
-  dice = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 95, 102, 105}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
+  dice = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 101, 104, 106}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
   shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
     active_player = 1,
@@ -134,100 +134,8 @@ Game = Stage:new {
 }
 
 function Game:init()
-  self.update_function = self.update_rolling_dice
-  self.draw_function = self.draw_info_box
-end
-
-function Game:update_rolling_dice(dt)
-  for i=1, 4 do
-    self.dice.result[i] = math.random(6)
-  end
-  if self.players[self.players.active_player].type == 0 then
-    if btnp(5, 120, 0) then
-      self.status = 2
-      self.update_function = self.update_hand_shaking
-      self.draw_function = self.draw_dice_throw
-    end
-  else
-    -- TODO: Add the AI for computer players
-  end
-end
-
-function Game:update_hand_shaking(dt)
-  self.dice.stopped = false
-  self.shake.counter = self.shake.counter + 1
-  if self.shake.counter % 5 == 0 then
-    self.shake.direction = .5
-    if self.shake.counter % 10 == 0 then
-      self.shake.direction = -.5
-    end
-    if self.shake.counter % 50 == 0 then
-      self.status = 3
-      self.update_function = self.update_dice_over_table
-    end
-  end
-  self.shake.y = self.shake.y + self.shake.direction
-end
-
-function Game:update_dice_over_table(dt)
-  for die=1, 4 do
-    local sin = math.sin(self.dice.x[die])
-    if self.dice.sin_count < 72 then
-      self.dice.x[die] = self.dice.x[die] + .6
-      self.dice.y[die] = 72 + sin
-      if sin < 0.1 then
-        self.dice.sin_count = self.dice.sin_count + 1
-      end
-    else
-      for dice=1, 4 do
-        self.dice.y[die] = 72
-        self.dice.stopped = true
-        if self.dice.sin_count == 72 then
-          self.dice.stopped_time = time()
-          self.dice.sin_count = 73
-        end      
-        if self.dice.stopped_time + 1500 < time() then
-          self.status = 4
-          self.update_function = self.update_cursor
-          self.draw_function = self.draw_cursor
-          self.cursor.column = self.dice.result[1] + self.dice.result[2]
-          self.cursor.column = self.dice.result[1] + self.dice.result[2]
-          self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
-
-          -- Find the next empty space for the selected column to get the cursor y coordinate
-          local empty_position = 0
-          while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
-            empty_position = empty_position + 1
-          end
-          self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
-          self.cursor.row = empty_position + 1
-        end
-      end
-    end
-  end
-end
-
-function Game:update_cursor(dt)
-  self.cursor.frame = self.cursor.frame + (.01 * dt)
-  if self.cursor.frame >=4 then self.cursor.frame = 0 end
-  if btn(5) then
-    self.players[self.players.active_player].runners[1] = { self.cursor.x, self.cursor.y }
-  end
-end
-
-function Game:draw_cursor()
-  -- print(self.cursor.x.." "..self.cursor.y.." "..self.cursor.column.." "..self.cursor.row, 60, 0)
-  spr(96 + math.floor(self.cursor.frame), self.cursor.x, self.cursor.y, 0);
-end
-
-function Game:draw_tokens()
-  for player=1, 4 do
-    for runner=1, 3 do
-      if self.players[player].runners[runner][1] ~= 0 then
-        spr(26 + self.players.active_player, self.players[player].runners[runner][1], self.players[player].runners[runner][2], 0)
-      end
-    end
-  end
+  self.update_function = self._update_rolling_dice
+  self.draw_function = self._draw_rolling_dice
 end
 
 function Game:update(dt)
@@ -240,14 +148,55 @@ end
 function Game:draw()
   cls(1)
   map(0, 0, 15, 16, self.board.x, self.board.y, 0)
-  self:draw_tokens()
+  self:_draw_tokens()
   if self.draw_function then 
     self:draw_function() 
   end
-  self:draw_player_scores()
+  self:_draw_player_scores()
 end
 
-function Game:draw_info_box()
+function Game:_update_rolling_dice(dt)
+  if self.players[self.players.active_player].type == 0 then
+    if btnp(5, 120, 0) then
+      self.status = 2
+      self.update_function = self._update_hand_shaking
+      self.draw_function = self._draw_hand_shaking
+    end
+  else
+    -- TODO: Add the AI for computer players
+  end
+end
+
+function Game:_get_valid_columns()
+  -- Calculate dice combinations
+  local combinations = {}
+  for a = 1, 3 do
+    for i = a, 4 do
+      if a ~= i then
+        table.insert(combinations, self.dice.result[a] + self.dice.result[i])
+      end
+    end
+  end
+  
+  -- Helper method
+  local contains = function (table, value)
+    for i = 1, #table do
+      if table[i] == value then return true end
+    end
+    return false
+  end
+
+  -- Remove duplicates
+  local result = {}
+  for i = 1, #combinations do
+    if not contains(result, combinations[i]) then
+      table.insert(result, combinations[i])
+    end
+  end
+  return result
+end
+
+function Game:_draw_rolling_dice()
   rect(48, 48, 144, 40, 0)
   rectb(48, 48, 144, 40, 7)
   print(self.players[self.players.active_player].name, 96, 56, settings.player_colors[self.players.active_player])
@@ -258,7 +207,23 @@ function Game:draw_info_box()
   print(message, 64, 72, 7)
 end
 
-function Game:draw_dice_throw()
+function Game:_update_hand_shaking(dt)
+  self.dice.stopped = false
+  self.shake.counter = self.shake.counter + 1
+  if self.shake.counter % 5 == 0 then
+    self.shake.direction = .5
+    if self.shake.counter % 10 == 0 then
+      self.shake.direction = -.5
+    end
+    if self.shake.counter % 50 == 0 then
+      self.status = 3
+      self.update_function = self._update_dice_over_table
+    end
+  end
+  self.shake.y = self.shake.y + self.shake.direction
+end
+
+function Game:_draw_hand_shaking()
   rect(80, 48, 80, 40, 0)
   rectb(80, 48, 80, 40, 7)
   if self.status == 2 then -- Draw closed hand
@@ -281,7 +246,72 @@ function Game:draw_dice_throw()
   end
 end
 
-function Game:draw_player_scores()
+function Game:_update_dice_over_table(dt)
+  for die = 1, 4 do
+    local sin = math.sin(self.dice.x[die])
+    if self.dice.sin_count < 72 then
+      self.dice.x[die] = self.dice.x[die] + .6
+      self.dice.y[die] = 72 + sin
+      if sin < 0.1 then
+        self.dice.sin_count = self.dice.sin_count + 1
+      end
+    else
+      self.dice.y[die] = 72
+      self.dice.stopped = true
+      if self.dice.sin_count == 72 then
+        self.dice.stopped_time = time()
+        self.dice.sin_count = 73
+        for i = 1, 4 do
+          self.dice.result[i] = math.random(6)
+        end
+        -- TODO Fix problem with the line below
+        -- self._get_valid_columns()
+      end 
+    end
+    if self.dice.stopped and self.dice.stopped_time + 1500 < time() then
+      self.status = 4
+      self.update_function = self._update_cursor
+      self.draw_function = self._draw_cursor
+      self.cursor.column = self.dice.result[1] + self.dice.result[2]
+      self.cursor.column = self.dice.result[1] + self.dice.result[2]
+      self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
+
+      -- Find the next empty space for the selected column to get the cursor y coordinate
+      local empty_position = 0
+      while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
+        empty_position = empty_position + 1
+      end
+      self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
+      self.cursor.row = empty_position + 1
+    end
+  end
+end
+
+function Game:_update_cursor(dt)
+  self.cursor.frame = self.cursor.frame + (.01 * dt)
+  if self.cursor.frame >=4 then self.cursor.frame = 0 end
+  if btn(5) then
+    self.players[self.players.active_player].runners[1] = { self.cursor.x, self.cursor.y }
+  end
+end
+
+function Game:_draw_cursor()
+  -- print(self.cursor.x.." "..self.cursor.y.." "..self.cursor.column.." "..self.cursor.row, 60, 0)
+  spr(96 + math.floor(self.cursor.frame), self.cursor.x, self.cursor.y, 0);
+end
+
+function Game:_draw_tokens()
+  for player=1, 4 do
+    for runner=1, 3 do
+      if self.players[player].runners[runner][1] ~= 0 then
+        spr(26 + self.players.active_player, self.players[player].runners[runner][1], self.players[player].runners[runner][2], 0)
+      end
+    end
+  end
+end
+
+
+function Game:_draw_player_scores()
   local pscore_coordinates = {
     {2, 2}, {194, 2}, {2, 128}, {194, 128}, -- Player name text coordinates
     {1, 10}, {215, 10}, {1, 116}, {215, 116} -- Player points sprites coordinates
