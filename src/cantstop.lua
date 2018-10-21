@@ -247,42 +247,46 @@ function Game:_draw_hand_shaking()
 end
 
 function Game:_update_dice_over_table(dt)
-  for die = 1, 4 do
-    local sin = math.sin(self.dice.x[die])
-    if self.dice.sin_count < 72 then
-      self.dice.x[die] = self.dice.x[die] + .6
-      self.dice.y[die] = 72 + sin
-      if sin < 0.1 then
-        self.dice.sin_count = self.dice.sin_count + 1
-      end
-    else
-      self.dice.y[die] = 72
-      self.dice.stopped = true
-      if self.dice.sin_count == 72 then
-        self.dice.stopped_time = time()
-        self.dice.sin_count = 73
-        for i = 1, 4 do
-          self.dice.result[i] = math.random(6)
+  if not self.dice.stopped then
+    for die = 1, 4 do
+      local sin = math.sin(self.dice.x[die])
+      if self.dice.sin_count < 72 then
+        self.dice.x[die] = self.dice.x[die] + .6
+        self.dice.y[die] = 72 + sin
+        if sin < 0.1 then
+          self.dice.sin_count = self.dice.sin_count + 1
         end
-        -- TODO Fix problem with the line below
-        -- self._get_valid_columns()
-      end 
-    end
-    if self.dice.stopped and self.dice.stopped_time + 1500 < time() then
-      self.status = 4
-      self.update_function = self._update_cursor
-      self.draw_function = self._draw_cursor
-      self.cursor.column = self.dice.result[1] + self.dice.result[2]
-      self.cursor.column = self.dice.result[1] + self.dice.result[2]
-      self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
-
-      -- Find the next empty space for the selected column to get the cursor y coordinate
-      local empty_position = 0
-      while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
-        empty_position = empty_position + 1
+      else
+        self.dice.y[die] = 72
+        self.dice.stopped = true
+        self.dice.stopped_time = time()
       end
-      self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
-      self.cursor.row = empty_position + 1
+    end
+  else
+    if self.dice.sin_count == 72 then
+      self.dice.sin_count = 73
+      for i = 1, 4 do
+        self.dice.result[i] = math.random(6)
+      end
+      -- TODO Fix problem with the line below
+      -- self._get_valid_columns()
+    else
+      if self.dice.stopped_time + 1500 < time() then
+        self.status = 4
+        self.update_function = self._update_cursor
+        self.draw_function = self._draw_cursor
+        self.cursor.column = self.dice.result[1] + self.dice.result[2]
+        self.cursor.column = self.dice.result[1] + self.dice.result[2]
+        self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
+
+        -- Find the next empty space for the selected column to get the cursor y coordinate
+        local empty_position = 0
+        while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
+          empty_position = empty_position + 1
+        end
+        self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
+        self.cursor.row = empty_position + 1
+      end
     end
   end
 end
