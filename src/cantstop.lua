@@ -112,18 +112,21 @@ end
 --------------------------------- Game Stage ---------------------------------
 Game = Stage:new {
   status = 1, -- Rolling dice
-  dice = { x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 101, 104, 106}, stopped = false, stopped_time = 0, sin_count = 0, result = {} },
+  dice = { 
+    x = {0, 1, .3, .8}, y = {1, 0, .8, .3}, init_x = {99, 101, 104, 106}, 
+    stopped = false, stopped_time = 0, sin_count = 0, result = {}, columns = {}
+  },
   shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
     active_player = 1,
-    { name = "Player 1", points = 0, type = 0, id = 1, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
-    { name = "Player 2", points = 0, type = 1, id = 2, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
-    { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 },
-    { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1 }
+    { name = "Player 1", points = 0, type = 0, id = 1, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, positions = {0, 1, 2, 3, 1, 2, 3, 1, 0, 0, 2, 1} },
+    { name = "Player 2", points = 0, type = 1, id = 2, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, positions = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} },
+    { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, positions = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} },
+    { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, positions = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} }
   },
   cursor = { x = 0, y = 0, frame = 0, column = 0, row = 0 },
   board = { x = 60, y = 4,
-    cols = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    finished_columns = {},
     col_max_size = {2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2},
     col_coordinates = {
       {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100}, {116, 108}, 
@@ -165,35 +168,6 @@ function Game:_update_rolling_dice(dt)
   else
     -- TODO: Add the AI for computer players
   end
-end
-
-function Game:_get_valid_columns()
-  -- Calculate dice combinations
-  local combinations = {}
-  for a = 1, 3 do
-    for i = a, 4 do
-      if a ~= i then
-        table.insert(combinations, self.dice.result[a] + self.dice.result[i])
-      end
-    end
-  end
-  
-  -- Helper method
-  local contains = function (table, value)
-    for i = 1, #table do
-      if table[i] == value then return true end
-    end
-    return false
-  end
-
-  -- Remove duplicates
-  local result = {}
-  for i = 1, #combinations do
-    if not contains(result, combinations[i]) then
-      table.insert(result, combinations[i])
-    end
-  end
-  return result
 end
 
 function Game:_draw_rolling_dice()
@@ -268,8 +242,23 @@ function Game:_update_dice_over_table(dt)
       for i = 1, 4 do
         self.dice.result[i] = math.random(6)
       end
-      -- TODO Fix problem with the line below
-      -- self._get_valid_columns()
+      for i, v in ipairs(self.dice.result) do
+        trace('die #'..i..': '..v)
+      end
+      local columns = self:_get_valid_columns()
+      for i, v in ipairs(columns) do
+        trace('combination #'..i..': '..v)
+      end
+      local moves = {}
+      for i = 1, #columns do
+        local move = self:_get_closer_gap_in_column(columns[i])
+        if move ~= -1 then
+          table.insert(moves, {columns[i], move})
+        end
+      end
+      for m = 1, #moves do
+        trace('Possible moves: '..moves[m][1]..' '..moves[m][2])
+      end
     else
       if self.dice.stopped_time + 1500 < time() then
         self.status = 4
@@ -277,18 +266,62 @@ function Game:_update_dice_over_table(dt)
         self.draw_function = self._draw_cursor
         self.cursor.column = self.dice.result[1] + self.dice.result[2]
         self.cursor.column = self.dice.result[1] + self.dice.result[2]
+        --[[
         self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
-
-        -- Find the next empty space for the selected column to get the cursor y coordinate
-        local empty_position = 0
-        while (self.board.cols[self.cursor.column - 1] & self.players[self.players.active_player].id ~= 0) do
-          empty_position = empty_position + 1
-        end
         self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
-        self.cursor.row = empty_position + 1
+        ]]--
+        self.cursor.x = 0
+        self.cursor.y = 0
       end
     end
   end
+end
+
+function Game:_get_valid_columns()
+  -- Calculate dice combinations
+  local combinations = {}
+  for a = 1, 3 do
+    for i = a, 4 do
+      if a ~= i then
+        table.insert(combinations, self.dice.result[a] + self.dice.result[i])
+      end
+    end
+  end
+  
+  -- Helper method
+  local contains = function (table, value)
+    for i = 1, #table do
+      if table[i] == value then return true end
+    end
+    return false
+  end
+
+  -- Remove duplicates
+  local result = {}
+  for i = 1, #combinations do
+    if not contains(result, combinations[i]) then
+      table.insert(result, combinations[i])
+    end
+  end
+  return result
+end
+
+function Game:_get_closer_gap_in_column(column)
+  trace('getting gap at combination '..column)
+  for i, v in ipairs(self.board.finished_columns) do
+    if column == v then
+      return -1 -- Unusable column
+    end
+  end
+  local max_rows = {0, 2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2}
+  local result = self.players[self.players.active_player].positions[column] + 1
+  self.players[self.players.active_player].positions[column] = result
+  if result > max_rows[column] then
+    -- TODO: Add logic to give that column to the active player
+    return -1
+  end
+  trace('found empty gap at '..result)
+  return result
 end
 
 function Game:_update_cursor(dt)
