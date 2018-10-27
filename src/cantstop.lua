@@ -124,13 +124,13 @@ Game = Stage:new {
     { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0} },
     { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0} }
   },
-  cursor = { x = 0, y = 0, frame = 0, column = 0, row = 0 },
+  cursor = { position = { x = 0, y = 0, col = 0, row = 0 }, frame = 0, moves = {} },
   board = { x = 60, y = 4,
     finished_columns = {},
     col_max_size = {2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2},
     col_coordinates = {
-      {0, 0}, {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100},
-      {116, 108}, {124, 100}, {132, 92}, {140, 84}, {148, 76}, {156, 68}
+      {0, 0}, {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100}, {116, 108},
+      {124, 100}, {132, 92}, {140, 84}, {148, 76}, {156, 68}
     }
   },
   update_function = nil, draw_function = nil
@@ -221,6 +221,7 @@ function Game:_draw_hand_shaking()
 end
 
 function Game:_update_dice_over_table(dt)
+  local moves = {}
   if not self.dice.stopped then
     for die = 1, 4 do
       local sin = math.sin(self.dice.x[die])
@@ -249,7 +250,6 @@ function Game:_update_dice_over_table(dt)
       for i, v in ipairs(columns) do
         trace('combination #'..i..': '..v)
       end
-      local moves = {}
       for i = 1, #columns do
         local move = self:_get_closer_gap_in_column(columns[i])
         if move ~= -1 then
@@ -259,19 +259,16 @@ function Game:_update_dice_over_table(dt)
       for m = 1, #moves do
         trace('Possible moves: '..moves[m][1]..' '..moves[m][2])
       end
+      self.cursor.moves = moves
     else
       if self.dice.stopped_time + 1500 < time() then
         self.status = 4
+        trace(self.board.col_coordinates[self.cursor.moves[1][1]][1])
+        trace(self.board.col_coordinates[self.cursor.moves[1][1]][2])
+        self.cursor.position.x = self.board.col_coordinates[self.cursor.moves[1][1]][1]
+        self.cursor.position.y = self.board.col_coordinates[self.cursor.moves[1][1]][2]
         self.update_function = self._update_cursor
         self.draw_function = self._draw_cursor
-        self.cursor.column = self.dice.result[1] + self.dice.result[2]
-        self.cursor.column = self.dice.result[1] + self.dice.result[2]
-        --[[
-        self.cursor.x = self.board.col_coordinates[self.cursor.column - 1][1] - 1
-        self.cursor.y = self.board.col_coordinates[self.cursor.column - 1][2] - (8 * empty_position)
-        ]]--
-        self.cursor.x = 0
-        self.cursor.y = 0
       end
     end
   end
@@ -319,13 +316,12 @@ function Game:_update_cursor(dt)
   self.cursor.frame = self.cursor.frame + (.01 * dt)
   if self.cursor.frame >=4 then self.cursor.frame = 0 end
   if btn(5) then
-    self.players[self.players.active_player].runners[1] = { self.cursor.x, self.cursor.y }
+    self.players[self.players.active_player].runners[1] = { self.cursor.position.x, self.cursor.position.y }
   end
 end
 
 function Game:_draw_cursor()
-  -- print(self.cursor.x.." "..self.cursor.y.." "..self.cursor.column.." "..self.cursor.row, 60, 0)
-  spr(96 + math.floor(self.cursor.frame), self.cursor.x, self.cursor.y, 0);
+  spr(96 + math.floor(self.cursor.frame), self.cursor.position.x, self.cursor.position.y, 0);
 end
 
 function Game:_draw_tokens()
