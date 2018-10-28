@@ -119,19 +119,20 @@ Game = Stage:new {
   shake = { x = 0, y = 0, counter = 0, direction = 0 },
   players = { -- type: 0 human, 1 computer
     active_player = 1,
-    { name = "Player 1", points = 0, type = 0, id = 1, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1} },
+    { name = "Player 1", points = 0, type = 0, id = 1, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 1, 0, 0, 0, 3, 3, 3, 0, 0, 0, 1} },
     { name = "Player 2", points = 0, type = 1, id = 2, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0} },
     { name = "Player 3", points = 0, type = 1, id = 4, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0} },
     { name = "Player 4", points = 0, type = 1, id = 8, runners = {{0, 0}, {0, 0}, {0, 0}}, active_runner = 1, tokens = {0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0} }
   },
-  cursor = { position = { x = 0, y = 0, col = 0, row = 0 }, frame = 0, moves = {} },
+  cursor = { position = { x = 0, y = 0, col = 0, row = 0 }, frame = 0, moves = {}, active_move },
   board = { x = 60, y = 4,
     finished_columns = {},
     col_max_size = {2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2},
     col_coordinates = {
       {0, 0}, {76, 68}, {84, 76}, {92, 84}, {100, 92}, {108, 100}, {116, 108},
       {124, 100}, {132, 92}, {140, 84}, {148, 76}, {156, 68}
-    }
+    },
+    probabilities = { 1 / 36, 2 / 36, 3 / 36, 4 / 36, 5 / 36, 6 / 36, 5 / 36, 4 / 36, 3/ 36, 2 / 36, 1 / 36 }
   },
   update_function = nil, draw_function = nil
 }
@@ -262,16 +263,19 @@ function Game:_update_dice_over_table(dt)
       self.cursor.moves = moves
     else
       if self.dice.stopped_time + 1500 < time() then
-        self.status = 4
-        trace(self.board.col_coordinates[self.cursor.moves[1][1]][1])
-        trace(self.board.col_coordinates[self.cursor.moves[1][1]][2])
-        self.cursor.position.x = self.board.col_coordinates[self.cursor.moves[1][1]][1]
-        self.cursor.position.y = self.board.col_coordinates[self.cursor.moves[1][1]][2]
+        self.cursor.active_move = 1
         self.update_function = self._update_cursor
         self.draw_function = self._draw_cursor
+        self.status = 4
       end
     end
   end
+end
+
+function Game:_get_cursor_coordinates(move)
+  local x = self.board.col_coordinates[self.cursor.moves[move][1]][1]
+  local y = self.board.col_coordinates[self.cursor.moves[move][1]][2] - ((self.cursor.moves[move][2] * 8) - 8)
+  return x, y
 end
 
 function Game:_get_valid_columns()
@@ -300,6 +304,7 @@ function Game:_get_valid_columns()
       table.insert(result, combinations[i])
     end
   end
+  table.sort(result)
   return result
 end
 
@@ -315,8 +320,19 @@ end
 function Game:_update_cursor(dt)
   self.cursor.frame = self.cursor.frame + (.01 * dt)
   if self.cursor.frame >=4 then self.cursor.frame = 0 end
+  self.cursor.position.x, self.cursor.position.y = self:_get_cursor_coordinates(self.cursor.active_move)
   if btn(5) then
     self.players[self.players.active_player].runners[1] = { self.cursor.position.x, self.cursor.position.y }
+  end
+  if btnp(2, 10, 10) then -- Left
+    if self.cursor.active_move > 1 then
+      self.cursor.active_move = self.cursor.active_move - 1
+    end
+  end
+  if btnp(3, 10, 10) then -- Right
+    if self.cursor.active_move < #self.cursor.moves then 
+      self.cursor.active_move = self.cursor.active_move + 1 
+    end
   end
 end
 
